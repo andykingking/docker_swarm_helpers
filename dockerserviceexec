@@ -19,12 +19,15 @@ if [[ $# < 2 ]] ; then
 	echo "$0 base_reverseproxy bash"
 	echo ""
 	echo "Allows exec in a container running on another node in this swarm by using ssh."
+	echo "Set SSH_OPTS environment variable to customise the ssh command."
 	exit 1
 else
 	SERVICE="$1"
 	shift
 	COMMAND="$@"
 fi
+
+SSH_OPTS=${SSH_OPTS:="-l ${USER}"}
 
 # --------------------------------------------------------------------------------------
 # look for dependencies
@@ -36,7 +39,7 @@ fi
 
 # --------------------------------------------------------------------------------------
 
-if PAIR=$(dockernodeps $SERVICE) ; then
+if PAIR=$(dockernodeps "$SERVICE") ; then
   NODE=${PAIR%%:*}
   CONTAINER=${PAIR#*:}
 else
@@ -47,10 +50,13 @@ fi
 
 # check if tty is present (because no tty is present when running from gitlab-deployment with gitlab-runner and docker-in-docker)
 if [ -t 0 ] ; then
-        set -x
-        ssh -t $NODE docker exec -it $CONTAINER $COMMAND
+  SSH_OPTS="-t ${SSH_OPTS}"
+  EXEC_OPTS="-it"
 else
-        set -x
-        echo ssh $NODE docker exec -i $CONTAINER $COMMAND
-        ssh $NODE docker exec -i $CONTAINER $COMMAND
+  EXEC_OPTS="-i"
 fi
+
+set -x
+echo ssh "$SSH_OPTS" "$NODE" docker exec "$EXEC_OPTS" "$CONTAINER" "$COMMAND"
+# shellcheck disable=SC2029
+ssh "$SSH_OPTS" "$NODE" docker exec "$EXEC_OPTS" "$CONTAINER" "$COMMAND"

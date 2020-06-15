@@ -24,8 +24,11 @@ if [[ $# = 0 ]] ; then
 	echo ""
 	echo "Returns the docker node-id and the container-id in format NODE-ID:CONTAINER-ID running the given service as parameter."
 	echo "If the option '-a' is not used, the search exits with the first pair found."
+	echo "Set SSH_OPTS environment variable to customise the ssh command."
 	exit 1
 fi
+
+SSH_OPTS=${SSH_OPTS:="-l ${USER}"}
 
 for PARAMETER in $@ ; do 
 	case $1 in 
@@ -61,7 +64,7 @@ for NODEID in $(docker node ls -q) ; do
         if [[ $(docker service ps -f "node=$NODEID" --format "{{.CurrentState}}" "$SERVICENAME" 2>/dev/null | grep -cw 'Running') > 0 ]] ; then
 		NODENAME=$(docker node ls --format {{.Hostname}} -f id=$NODEID)
 		CONTAINERIDCOMMAND="docker ps -q -f status=running --filter name=$SERVICENAME 2>/dev/null"
-		CONTAINERID=$(ssh "$NODENAME" "$CONTAINERIDCOMMAND")
+		CONTAINERID=$(ssh "$SSH_OPTS" "$NODENAME" "$CONTAINERIDCOMMAND")
 		CONTAINERFOUND=true
 		if $ALL ; then 
 		  echo "${NODENAME}:${CONTAINERID}"
